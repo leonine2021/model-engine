@@ -40,3 +40,4 @@ notification.mp3
 venv/
 myenv/
 nohup.out
+.DS_Store
