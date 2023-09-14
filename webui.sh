@@ -232,6 +232,34 @@ prepare_tcmalloc() {
     fi
 }
 
+CSV_FILE="./cn_models.csv"  # Change this to your CSV file name
+
+# Check if the CSV file exists
+if [[ -f "$CSV_FILE" ]]; then
+  # Loop through the CSV file and download each model
+  awk -F, 'NR>1 {gsub(/ /, "", $1); gsub(/ /, "", $2); print $1,$2}' "$CSV_FILE" | while IFS=" " read -r model_name model_link; do
+    destination="./extensions/sd-webui-controlnet/models/$model_name.pth"
+
+    # Check if the destination folder exists
+    DESTINATION_FOLDER="$(dirname "$destination")"
+    if [[ -d "$DESTINATION_FOLDER" ]]; then
+      # Check if the model file already exists
+      if [[ -f "$destination" ]]; then
+        echo "Model file '$destination' already exists. Skipping download."
+      else
+        # Download the AI model file
+        curl -L -o "$destination" "$model_link"
+      fi
+    else
+      echo "Destination folder '$DESTINATION_FOLDER' does not exist. Skipping model download."
+    fi
+  done
+else
+  echo "CSV file '$CSV_FILE' does not exist. Skipping model downloads."
+fi
+
+MAX_RESTARTS=5  # set the number of max restarts
+RESTART_COUNT=0
 KEEP_GOING=1
 export SD_WEBUI_RESTART=tmp/restart
 while [[ "$KEEP_GOING" -eq "1" ]]; do
@@ -249,7 +277,26 @@ while [[ "$KEEP_GOING" -eq "1" ]]; do
         "${python_cmd}" -u "${LAUNCH_SCRIPT}" "$@"
     fi
 
-    if [[ ! -f tmp/restart ]]; then
-        KEEP_GOING=0
+    # Check if the last command was killed
+    if [ $? -eq 137 ]; then
+        RESTART_COUNT=$((RESTART_COUNT+1))
+        if [ $RESTART_COUNT -le $MAX_RESTARTS ]; then
+            printf "\n%s\n" "${delimiter}"
+            printf "Restart count: %s" "$RESTART_COUNT" # <- This line logs out the restart count
+            printf "Process was killed. Restarting..."
+            printf "\n%s\n" "${delimiter}"
+            sleep 5  # delay for 5 seconds before restart
+            printf "Restart count left: %d\n" $((RESTART_LIMIT - RESTART_COUNT))
+
+        else
+            printf "\n%s\n" "${delimiter}"
+            printf "Max restart limit reached. Exiting..."
+            printf "\n%s\n" "${delimiter}"
+            KEEP_GOING=0
+        fi
+    else
+        if [[ ! -f tmp/restart ]]; then
+            KEEP_GOING=0
+        fi
     fi
 done
