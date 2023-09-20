@@ -286,7 +286,7 @@ while [[ "$KEEP_GOING" -eq "1" ]]; do
             printf "Process was killed. Restarting..."
             printf "\n%s\n" "${delimiter}"
             sleep 5  # delay for 5 seconds before restart
-            printf "Restart count left: %d\n" $((RESTART_LIMIT - RESTART_COUNT))
+            printf "Restart count left: %d\n" $((MAX_RESTARTS - RESTART_COUNT))
 
         else
             printf "\n%s\n" "${delimiter}"
